@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <string.h>
 
-#define BUFFER_SIZE 800
+#define BUFFER_SIZE 400
 #define IGN(x) __##x __attribute__((unused))
 
 int running;

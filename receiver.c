@@ -10,14 +10,17 @@
 #include <string.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 800
+#define BUFFER_SIZE 400
 #define IGN(x) __##x __attribute__((unused))
 
 int running;
-float sampleRate = 8000;
-float sampleRateBlend = 0.005;
+float initialSampleRate = 8000;
+float sampleRate;
+float sampleRateBlend = 0.0005;
+float localPositionAvg;
+float localPositionBlend = 0.05;
 
-double targetLatency = 0.1;  // in s
+double targetLatency = 0.05;  // in s
 uint64_t senderOffset; // incoming packet offset which would start at receiveBuffer[0]
 char receiveBuffer[8000];
 
@@ -82,41 +85,51 @@ void receiveNetwork() {
       return;
     }
 
+    struct timespec t;
+    if(clock_gettime(CLOCK_REALTIME, &t)) {
+      fprintf(stderr, "Failed to get current time: %s\n", strerror(errno));
+      return;
+    }
+
+    uint64_t now = (uint64_t)(t.tv_sec) * 1000000000 + t.tv_nsec;
+    double packetToPlayIn = (packet.time + targetLatency * 1000000000 - now) / 1000000000;
+
     int dataLen = len - sizeof(packet) + sizeof(packet.data);
     int64_t localPosition = packet.position - senderOffset;
-    
-    if(localPosition < 0) {
-      fprintf(stderr, "Received late packet: localPosition was %lld\n", (long long int)localPosition);
 
-      int rest = localPosition + dataLen;
-      if(rest > 0) {
-        memcpy(receiveBuffer, packet.data - localPosition, dataLen + localPosition);
-      }
+    printf("Packet would need to play in: %lf, local position: %lld\n", packetToPlayIn, (long long int)localPosition);
 
-      sampleRate -= 5;
-    } else if(localPosition + dataLen > (int)sizeof(receiveBuffer)) {
-      fprintf(stderr, "Received future (or first) packet: localPosition was %lld\n", (long long int)localPosition);
+    if(packetToPlayIn < 0) {
+      fprintf(stderr, "Packet arrived too late.\n");
+    } else if(localPosition < 0) {
+      fprintf(stderr, "Playback is too far ahead.\n");
 
       bzero(receiveBuffer, sizeof(receiveBuffer));
       senderOffset = packet.position - sizeof(receiveBuffer) / sampleRate * targetLatency;
-      localPosition = packet.position - senderOffset;
+      localPositionAvg = localPosition = packet.position - senderOffset;
+    } else if(localPosition + dataLen > (int)sizeof(receiveBuffer)) {
+      fprintf(stderr, "Playback is too far behind.\n");
+
+      bzero(receiveBuffer, sizeof(receiveBuffer));
+      senderOffset = packet.position - sizeof(receiveBuffer) / sampleRate * targetLatency;
+      localPositionAvg = localPosition = packet.position - senderOffset;
+      sampleRate = initialSampleRate;
     } else {
       memcpy(receiveBuffer + localPosition, packet.data, dataLen);
 
-      struct timespec t;
-      if(clock_gettime(CLOCK_REALTIME, &t)) {
-        fprintf(stderr, "Failed to get current time: %s\n", strerror(errno));
-        return;
-      }
-
-      uint64_t now = (uint64_t)(t.tv_sec) * 1000000000 + t.tv_nsec;
-      double packetToPlayIn = (packet.time + targetLatency * 1000000000 - now) / 1000000000;
-      printf("Packet would need to play in: %lf\n", packetToPlayIn);
-
       float onTargetSampleRate = localPosition / packetToPlayIn;
+
+      localPositionAvg = (1 - localPositionBlend) * localPositionAvg + localPositionBlend * localPosition;
+
       printf("Received packet, local position %lld. onTargetSampleRate would be %f\n", (long long int)localPosition, onTargetSampleRate);
 
-      sampleRate = (1 - sampleRateBlend) * sampleRate + sampleRateBlend * onTargetSampleRate;
+      float newSampleRate = (1 - sampleRateBlend) * sampleRate + sampleRateBlend * onTargetSampleRate;
+
+      if(newSampleRate < sampleRate && localPosition < localPositionAvg) {
+        sampleRate = newSampleRate;
+      } else if(newSampleRate > sampleRate && localPosition > localPositionAvg) {
+        sampleRate = newSampleRate;
+      }
     }
 
     if(sampleRate > 4000 && sampleRate < 12000) {
@@ -176,7 +189,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Could not resolve listening address: %s\n", gai_strerror(gaiError));
     return 1;
   }
+
   senderOffset = -1ull << 62;
+  sampleRate = initialSampleRate;
 
   udpSocket = socket(listenAddr->ai_family, SOCK_DGRAM, 0);
   if(udpSocket < 0) {
