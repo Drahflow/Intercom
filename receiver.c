@@ -86,7 +86,7 @@ void receiveNetwork() {
     int64_t localPosition = packet.position - senderOffset;
     
     if(localPosition < 0) {
-      fprintf(stderr, "Received late packet: localPosition was %ld\n", localPosition);
+      fprintf(stderr, "Received late packet: localPosition was %lld\n", (long long int)localPosition);
 
       int rest = localPosition + dataLen;
       if(rest > 0) {
@@ -95,7 +95,7 @@ void receiveNetwork() {
 
       sampleRate -= 5;
     } else if(localPosition + dataLen > (int)sizeof(receiveBuffer)) {
-      fprintf(stderr, "Received future (or first) packet: localPosition was %ld\n", localPosition);
+      fprintf(stderr, "Received future (or first) packet: localPosition was %lld\n", (long long int)localPosition);
 
       bzero(receiveBuffer, sizeof(receiveBuffer));
       senderOffset = packet.position - sizeof(receiveBuffer) / sampleRate * targetLatency;
@@ -114,7 +114,7 @@ void receiveNetwork() {
       printf("Packet would need to play in: %lf\n", packetToPlayIn);
 
       float onTargetSampleRate = localPosition / packetToPlayIn;
-      printf("Received packet, local position %ld. onTargetSampleRate would be %f\n", localPosition, onTargetSampleRate);
+      printf("Received packet, local position %lld. onTargetSampleRate would be %f\n", (long long int)localPosition, onTargetSampleRate);
 
       sampleRate = (1 - sampleRateBlend) * sampleRate + sampleRateBlend * onTargetSampleRate;
     }
@@ -149,7 +149,7 @@ void writeAudio() {
   bzero(receiveBuffer + sizeof(receiveBuffer) - requested, requested);
   senderOffset += requested;
 
-  printf("Played %ld samples.\n", requested);
+  printf("Played %lld samples.\n", (long long int)requested);
   fprintf(stderr, "%s\n", pa_strerror(pa_context_errno(ctx)));
   fprintf(stderr, "%d %d\n", pa_stream_is_corked(stream), pa_stream_is_suspended(stream));
 }
