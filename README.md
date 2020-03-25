@@ -17,7 +17,7 @@ recv-host# ./receiver 4000
 Bidirectional communication (no echo cancel) by adding
 a link in the other direction, obviously.
 
-If it does not work, and buf pos does not stabilize try `receiver 4000 800`
+If it does not work, and buf pos does not stabilize, try `receiver 4000 800`
 (increase pulseaudio playback buffer to 800 samples).
 
 If it does not work, and it says `Packet for +-0.12345s, buf pos ...`
