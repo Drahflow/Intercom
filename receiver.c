@@ -107,6 +107,7 @@ void receiveNetwork() {
       bzero(receiveBuffer, sizeof(receiveBuffer));
       senderOffset = packet.position - sizeof(receiveBuffer) / sampleRate * targetLatency;
       localPositionAvg = localPosition = packet.position - senderOffset;
+      sampleRate = initialSampleRate;
     } else if(localPosition + dataLen > (int)sizeof(receiveBuffer)) {
       fprintf(stderr, "Playback is too far behind.\n");
 
