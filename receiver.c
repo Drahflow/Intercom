@@ -10,8 +10,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 400
 #define IGN(x) __##x __attribute__((unused))
+
+int BUFFER_SIZE = 400;
 
 int running;
 float initialSampleRate = 8000;
@@ -133,7 +134,7 @@ void receiveNetwork() {
       }
     }
 
-    if(sampleRate > 4000 && sampleRate < 12000) {
+    if(sampleRate > 7500 && sampleRate < 8500) {
       if(streamReady) {
         printf("Setting new sample rate: %d\n", (uint32_t)sampleRate);
         pa_stream_update_sample_rate(stream, sampleRate, NULL, NULL);
@@ -169,9 +170,14 @@ void writeAudio() {
 }
 
 int main(int argc, char **argv) {
-  if(argc != 2) {
-    fprintf(stderr, "Usage: ./receiver <target port>\n");
+  if(argc != 2 && argc != 3) {
+    fprintf(stderr, "Usage: ./receiver <target port> [<buffer size>]\n");
     return 1;
+  }
+
+  if(argc == 3) {
+    BUFFER_SIZE = atoi(argv[2]);
+    printf("Setting buffer size to %d\n", BUFFER_SIZE);
   }
 
   struct addrinfo *listenAddr;
