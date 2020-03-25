@@ -98,7 +98,7 @@ void receiveNetwork() {
     int dataLen = len - sizeof(packet) + sizeof(packet.data);
     int64_t localPosition = packet.position - senderOffset;
 
-    printf("Packet would need to play in: %lf, local position: %lld\n", packetToPlayIn, (long long int)localPosition);
+    printf("Packet for: +%lfs, buf pos: %lld", packetToPlayIn, (long long int)localPosition);
 
     if(packetToPlayIn < 0) {
       fprintf(stderr, "Packet arrived too late.\n");
@@ -123,7 +123,7 @@ void receiveNetwork() {
 
       localPositionAvg = (1 - localPositionBlend) * localPositionAvg + localPositionBlend * localPosition;
 
-      printf("Received packet, local position %lld. onTargetSampleRate would be %f\n", (long long int)localPosition, onTargetSampleRate);
+      printf(", pkg sample rate %f", onTargetSampleRate);
 
       float newSampleRate = (1 - sampleRateBlend) * sampleRate + sampleRateBlend * onTargetSampleRate;
 
@@ -136,12 +136,14 @@ void receiveNetwork() {
 
     if(sampleRate > 7500 && sampleRate < 8500) {
       if(streamReady) {
-        printf("Setting new sample rate: %d\n", (uint32_t)sampleRate);
+        printf(" -> new sample rate: %d", (uint32_t)sampleRate);
         pa_stream_update_sample_rate(stream, sampleRate, NULL, NULL);
       } else {
-        printf("Stream is not ready, yet.\n");
+        printf(" Stream is not ready, yet.");
       }
     }
+
+    printf("\n");
   }
 }
 
@@ -164,9 +166,7 @@ void writeAudio() {
   bzero(receiveBuffer + sizeof(receiveBuffer) - requested, requested);
   senderOffset += requested;
 
-  printf("Played %lld samples.\n", (long long int)requested);
-  fprintf(stderr, "%s\n", pa_strerror(pa_context_errno(ctx)));
-  fprintf(stderr, "%d %d\n", pa_stream_is_corked(stream), pa_stream_is_suspended(stream));
+  // printf("Played %lld samples.\n", (long long int)requested);
 }
 
 int main(int argc, char **argv) {
