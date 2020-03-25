@@ -176,7 +176,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Could not resolve listening address: %s\n", gai_strerror(gaiError));
     return 1;
   }
-  senderOffset = 0;
+  senderOffset = -1ull << 62;
 
   udpSocket = socket(listenAddr->ai_family, SOCK_DGRAM, 0);
   if(udpSocket < 0) {
