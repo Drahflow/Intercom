@@ -22,5 +22,6 @@ If it does not work, and buf pos does not stabilize, try `receiver 4000 800`
 
 If it does not work, and it says `Packet for +-0.12345s, buf pos ...`
 and `Packet arrived too late` it means packets were received (123ms in this
-case) after they were supposed to be played. Change receiver.c `targetLatency` to 
-some value your link can actually achieve.
+case) after they were supposed to be played. Make sure system time is in-sync between
+the two hosts. If it is, change receiver.c `targetLatency` to some value your
+link can actually achieve.
