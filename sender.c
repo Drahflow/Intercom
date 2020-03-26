@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <string.h>
+#include <netinet/ip.h>
 
 #define BUFFER_SIZE 400
 #define IGN(x) __##x __attribute__((unused))
@@ -118,6 +119,11 @@ int main(int argc, char **argv) {
   if(udpSocket < 0) {
     fprintf(stderr, "Could not create UDP socket: %s\n", strerror(errno));
     return 1;
+  }
+
+  char lowLatency = IPTOS_CLASS_CS2;
+  if(setsockopt(udpSocket, IPPROTO_IP, IP_TOS, &lowLatency, 1) < 0) {
+    fprintf(stderr, "Could not request low-latency IP TOS: %s\n", strerror(errno));
   }
 
   if(connect(udpSocket, peer->ai_addr, peer->ai_addrlen)) {
