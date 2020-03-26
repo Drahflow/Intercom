@@ -30,6 +30,31 @@ pa_stream *stream;
 int udpSocket;
 
 int streamReady = 0;
+int beepOnFailure = 0;
+
+// drop-in replacement for bzero on receiveBuffer
+void failureSound(char *bufferPos, size_t len) {
+  char reference;
+  if(bufferPos == receiveBuffer) {
+    reference = bufferPos[0];
+  } else {
+    reference = bufferPos[-1];
+  }
+
+  if(!beepOnFailure) {
+    for(size_t i = 0; i < len; ++i) {
+      bufferPos[i] = reference;
+    }
+  } else if(reference > 0) {
+    for(size_t i = 0; i < len; ++i) {
+      bufferPos[i] = reference - (i % 4? 0: 4);
+    }
+  } else {
+    for(size_t i = 0; i < len; ++i) {
+      bufferPos[i] = reference + (i % 4? 0: 4);
+    }
+  }
+}
 
 void streamStateChanged(pa_stream *IGN(stream), void *IGN(userdata)) {
   pa_stream_state_t state = pa_stream_get_state(stream);
@@ -105,14 +130,14 @@ void receiveNetwork() {
     } else if(localPosition < 0) {
       fprintf(stderr, "Playback is too far ahead.\n");
 
-      bzero(receiveBuffer, sizeof(receiveBuffer));
+      failureSound(receiveBuffer, sizeof(receiveBuffer));
       senderOffset = packet.position - sizeof(receiveBuffer) / sampleRate * targetLatency;
       localPositionAvg = localPosition = packet.position - senderOffset;
       sampleRate = initialSampleRate;
     } else if(localPosition + dataLen > (int)sizeof(receiveBuffer)) {
       fprintf(stderr, "Playback is too far behind.\n");
 
-      bzero(receiveBuffer, sizeof(receiveBuffer));
+      failureSound(receiveBuffer, sizeof(receiveBuffer));
       senderOffset = packet.position - sizeof(receiveBuffer) / sampleRate * targetLatency;
       localPositionAvg = localPosition = packet.position - senderOffset;
       sampleRate = initialSampleRate;
@@ -163,7 +188,7 @@ void writeAudio() {
   }
 
   memmove(receiveBuffer, receiveBuffer + requested, sizeof(receiveBuffer) - requested);
-  bzero(receiveBuffer + sizeof(receiveBuffer) - requested, requested);
+  failureSound(receiveBuffer + sizeof(receiveBuffer) - requested, requested);
   senderOffset += requested;
 
   // printf("Played %lld samples.\n", (long long int)requested);
