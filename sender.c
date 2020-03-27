@@ -20,6 +20,11 @@ pa_stream *stream;
 uint64_t position;
 int udpSocket;
 
+char lastBlock[8000];
+int lastBlockAvailable = 0;
+uint64_t lastBlockTime = 0;
+uint64_t lastBlockPosition = 0;
+
 void streamStateChanged(pa_stream *IGN(stream), void *IGN(userdata)) {
   pa_stream_state_t state = pa_context_get_state(ctx);
   printf("pulseaudio stream state changed: %d\n", state);
@@ -40,15 +45,28 @@ void dataAvailable(pa_stream *IGN(stream), size_t IGN(bytes), void *IGN(userdata
     return;
   }
 
+  uint64_t now = (uint64_t)(t.tv_sec) * 1000000000 + t.tv_nsec;
+
   networkPacket packet;
-  packet.position = position;
-  packet.time = (uint64_t)(t.tv_sec) * 1000000000 + t.tv_nsec;
-  memcpy(packet.data, data, available);
+
+  if(lastBlockTime) {
+    packet.position = lastBlockPosition;
+    packet.time = lastBlockTime;
+    memcpy(packet.data, lastBlock, lastBlockAvailable);
+    memcpy(packet.data + lastBlockAvailable, data, available);
+  } else {
+    // First packet in stream
+    packet.position = position;
+    packet.time = now;
+    memcpy(packet.data, data, available);
+  }
 
   send(udpSocket, &packet, sizeof(packet) - sizeof(packet.data) + available, 0);
 
-  // In case of packet loss...
-  send(udpSocket, &packet, sizeof(packet) - sizeof(packet.data) + available, 0);
+  memcpy(lastBlock, data, available);
+  lastBlockAvailable = available;
+  lastBlockTime = now;
+  lastBlockPosition = position;
 
   position += available;
   printf("Data transmitted. Position now at: %llu\n", (long long unsigned int)position);
