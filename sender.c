@@ -54,16 +54,14 @@ void dataAvailable(pa_stream *IGN(stream), size_t IGN(bytes), void *IGN(userdata
     packet.time = lastBlockTime;
     memcpy(packet.data, lastBlock, lastBlockAvailable);
     memcpy(packet.data + lastBlockAvailable, data, available);
-
-    send(udpSocket, &packet, sizeof(packet) - sizeof(packet.data) + lastBlockAvailable + available, 0);
   } else {
     // First packet in stream
     packet.position = position;
     packet.time = now;
     memcpy(packet.data, data, available);
-
-    send(udpSocket, &packet, sizeof(packet) - sizeof(packet.data) + available, 0);
   }
+
+  send(udpSocket, &packet, sizeof(packet) - sizeof(packet.data) + available, 0);
 
   memcpy(lastBlock, data, available);
   lastBlockAvailable = available;
