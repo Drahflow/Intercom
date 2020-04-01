@@ -162,7 +162,10 @@ void receiveNetwork() {
     if(sampleRate > 7500 && sampleRate < 8500) {
       if(streamReady) {
         printf(" -> new sample rate: %d", (uint32_t)sampleRate);
-        pa_stream_update_sample_rate(stream, sampleRate, NULL, NULL);
+        pa_operation *op = pa_stream_update_sample_rate(stream, sampleRate, NULL, NULL);
+        if(op) {
+          pa_operation_unref(op);
+        }
       } else {
         printf(" Stream is not ready, yet.");
       }
