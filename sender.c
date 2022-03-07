@@ -47,9 +47,6 @@ void dataAvailable(pa_stream *IGN(stream), size_t IGN(bytes), void *IGN(userdata
 
   send(udpSocket, &packet, sizeof(packet) - sizeof(packet.data) + available, 0);
 
-  // In case of packet loss...
-  send(udpSocket, &packet, sizeof(packet) - sizeof(packet.data) + available, 0);
-
   position += available;
   printf("Data transmitted. Position now at: %llu\n", (long long unsigned int)position);
 
